@@ -1,5 +1,27 @@
-use std::env;
-use sha2::{ Sha256, Digest };
+use std::{env, sync::{atomic::{AtomicBool, Ordering}, Arc}};
+use sha2::{ Digest, Sha256 };
+use rayon::prelude::*;
+
+const MAX_THREADS: usize = 8;
+
+fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> (String, usize) {
+    let mut hasher = Sha256::new();
+    let mut hash = hasher.finalize();
+    let mut nonce: usize = start;
+    while hex::encode(&hash)
+    .chars()
+    .take(difficulty)
+    .collect::<String>() != target.clone() + &"0".repeat(difficulty - target.len()) 
+    && !found.load(Ordering::Relaxed) {
+        hasher = Sha256::new();
+        hasher.update(data);
+        nonce += MAX_THREADS;
+        hasher.update(nonce.to_string());
+        hash = hasher.finalize();
+    }
+
+    return (hex::encode(&hash), nonce);
+}
 
 fn main() {
     // Input
@@ -21,22 +43,14 @@ fn main() {
     }
     
     // Hashing
-    let mut hasher = Sha256::new();
-    let mut nonce: usize = 0;
-    hasher.update(data);
-    let mut hash = hasher.finalize();
-    // Zero-nonced hash is ignored: FIX
-    while hex::encode(&hash)
-    .chars()
-    .take(difficulty)
-    .collect::<String>() != target.clone() + &"0".repeat(difficulty - target.len()){
-        hasher = Sha256::new();
-        hasher.update(data);
-        nonce += 1;
-        hasher.update(nonce.to_string());
-        hash = hasher.finalize();
-    }
-
-    // Output
-    println!("Hash: {:x}\nNonce: {:}\nInput string: {:}{:}", hash, nonce, args[1], nonce);
+    let threads: Vec<usize> = (0..MAX_THREADS).collect();
+    let found = Arc::new(AtomicBool::new(false));
+    threads.into_par_iter().for_each(|thread| {
+        let found = Arc::clone(&found);
+        let (hash, nonce) = mine(data, &target, difficulty, thread, &found);
+        if !found.load(Ordering::Relaxed) {
+            println!("Hash: {}\nNonce: {}\nInput string: {}{}", hash, nonce, args[1], nonce);
+        }
+        found.store(true, Ordering::Relaxed);
+    });
 }
