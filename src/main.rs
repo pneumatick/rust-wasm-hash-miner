@@ -5,16 +5,17 @@ use rayon::prelude::*;
 const MAX_THREADS: usize = 8;
 
 fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> (String, usize) {
-    let mut hasher = Sha256::new();
-    let mut hash = hasher.finalize();
+    let mut hash_base = Sha256::new();
+    hash_base.update(data);
+    let mut hash = hash_base.clone().finalize();
     let mut nonce: usize = start;
+
     while hex::encode(&hash)
     .chars()
     .take(difficulty)
     .collect::<String>() != target.clone() + &"0".repeat(difficulty - target.len()) 
     && !found.load(Ordering::Relaxed) {
-        hasher = Sha256::new();
-        hasher.update(data);
+        let mut hasher = hash_base.clone();
         nonce += MAX_THREADS;
         hasher.update(nonce.to_string());
         hash = hasher.finalize();
