@@ -6,9 +6,9 @@
   </head>
   <body>
     <script type="module">
-      import init, { mine } from "./pkg/wasm_miner.js";
+      import init, { init_mine } from "./pkg/wasm_miner.js";
       init().then(() => {
-        mine("WebAssembly", "21e8", 4);
+        init_mine("WebAssembly", "21e8", 4);
       });
     </script>
   </body>

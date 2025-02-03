@@ -1,5 +1,10 @@
 use wasm_bindgen::prelude::*;
+use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
 use sha2::{ Digest, Sha256 };
+use rayon::prelude::*;
+
+
+const MAX_THREADS: usize = 4;
 
 #[wasm_bindgen]
 extern "C" {
@@ -7,13 +12,27 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-//pub fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> None {
-pub fn mine(data: &str, target: &str, difficulty: usize){
-    // Temporary
-    let MAX_THREADS: usize = 1;
-    let start: usize = 0;
-    let data = data.as_bytes();
+pub fn init_mine(data: &str, target: &str, difficulty: usize) {
+    // Might want to move this later
+    let target = target.to_owned() + &"0".repeat(difficulty - target.len());
 
+    // Hashing
+    let threads: Vec<usize> = (0..MAX_THREADS).collect();
+    let found = Arc::new(AtomicBool::new(false));
+    threads.into_par_iter().for_each(|thread| {
+        let found = Arc::clone(&found);
+        let (hash, nonce) = mine(data.as_bytes(), &target, difficulty, thread, &found);
+        if !found.load(Ordering::Relaxed) {
+            //println!("Hash: {}\nNonce: {}\nInput string: {}{}", hash, nonce, data, nonce);
+            alert(&format!("Hash: {:?}, Nonce: {:?}", hash, nonce));
+        }
+        found.store(true, Ordering::Relaxed);
+    });
+}
+
+//pub fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> None {
+ fn mine(data: &[u8], target: &str, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> (String, usize){
+//fn mine(data: &str, target: &str, difficulty: usize){
     let mut hash_base = Sha256::new();
     hash_base.update(data);
     let mut hash = hash_base.clone().finalize();
@@ -22,8 +41,9 @@ pub fn mine(data: &str, target: &str, difficulty: usize){
     while hex::encode(&hash)
     .chars()
     .take(difficulty)
-    .collect::<String>() != target.to_owned() + &"0".repeat(difficulty - target.len()) 
-    //&& !found.load(Ordering::Relaxed) {
+    //.collect::<String>() != target.to_owned() + &"0".repeat(difficulty - target.len()) 
+    .collect::<String>() != target
+    && !found.load(Ordering::Relaxed)
     {
         let mut hasher = hash_base.clone();
         nonce += MAX_THREADS;
@@ -31,6 +51,5 @@ pub fn mine(data: &str, target: &str, difficulty: usize){
         hash = hasher.finalize();
     }
 
-    //return (hex::encode(&hash), nonce);
-    alert(&format!("Hash: {:?}, Nonce: {:?}", hex::encode(&hash), nonce));
+    return (hex::encode(&hash), nonce);
 }
