@@ -9,7 +9,6 @@ extern "C" {
 #[wasm_bindgen]
 //pub fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> None {
 pub fn mine(data: &str, target: &str, difficulty: usize){
-    alert(&format!("Data: {:?}, Target: {:?}, Difficulty: {:?}", data, target, difficulty));
     // Temporary
     let MAX_THREADS: usize = 1;
     let start: usize = 0;
