@@ -2,14 +2,27 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
-    <title>hello-wasm example</title>
+    <title>WASM Hash Miner</title>
   </head>
   <body>
+    <h1>Multithreaded WASM Hash Miner</h1>
+    <input type="text" id="data_string" />
+    <input type="text" id="target_string" />
+    <input type="number" id="difficulty" />
+    <button id="mine_button">Mine</button>
+
     <script type="module">
       import init, { init_mine } from "./pkg/wasm_miner.js";
-      init().then(() => {
-        init_mine("WebAssembly", "21e8", 2);
-      });
+
+      init();
+      document.getElementById("mine_button").addEventListener("click", () => {
+        init_mine(
+            document.getElementById("data_string").value,
+            document.getElementById("target_string").value,
+            parseInt(document.getElementById("difficulty").value
+        )
+      );
+    });
     </script>
   </body>
 </html>
