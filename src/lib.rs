@@ -23,16 +23,13 @@ pub fn init_mine(data: &str, target: &str, difficulty: usize) {
         let found = Arc::clone(&found);
         let (hash, nonce) = mine(data.as_bytes(), &target, difficulty, thread, &found);
         if !found.load(Ordering::Relaxed) {
-            //println!("Hash: {}\nNonce: {}\nInput string: {}{}", hash, nonce, data, nonce);
             alert(&format!("Hash: {:?}, Nonce: {:?}", hash, nonce));
         }
         found.store(true, Ordering::Relaxed);
     });
 }
 
-//pub fn mine(data: &[u8], target: &String, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> None {
  fn mine(data: &[u8], target: &str, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> (String, usize){
-//fn mine(data: &str, target: &str, difficulty: usize){
     let mut hash_base = Sha256::new();
     hash_base.update(data);
     let mut hash = hash_base.clone().finalize();
@@ -41,7 +38,6 @@ pub fn init_mine(data: &str, target: &str, difficulty: usize) {
     while hex::encode(&hash)
     .chars()
     .take(difficulty)
-    //.collect::<String>() != target.to_owned() + &"0".repeat(difficulty - target.len()) 
     .collect::<String>() != target
     && !found.load(Ordering::Relaxed)
     {
