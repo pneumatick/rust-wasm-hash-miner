@@ -9,6 +9,7 @@
     <input type="text" id="data_string" />
     <input type="text" id="target_string" />
     <input type="number" id="difficulty" />
+    <input type="number" id="num_threads" />
     <button id="mine_button">Mine</button>
 
     <script type="module">
@@ -16,13 +17,14 @@
 
       init();
       document.getElementById("mine_button").addEventListener("click", () => {
-        init_mine(
+        let {hash, nonce} = init_mine(
             document.getElementById("data_string").value,
             document.getElementById("target_string").value,
-            parseInt(document.getElementById("difficulty").value
-        )
-      );
-    });
+            parseInt(document.getElementById("difficulty").value),
+            parseInt(document.getElementById("num_threads").value)
+        );
+        console.log(`Hash: ${hash}, Nonce: ${nonce}`);
+      });
     </script>
   </body>
 </html>
