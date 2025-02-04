@@ -4,7 +4,7 @@ use sha2::{ Digest, Sha256 };
 use rayon::prelude::*;
 
 
-const MAX_THREADS: usize = 8;
+//const MAX_THREADS: usize = 8;
 
 #[wasm_bindgen]
 extern "C" {
@@ -12,13 +12,14 @@ extern "C" {
 }
 
 #[wasm_bindgen]
-pub fn init_mine(data: &str, target: &str, difficulty: usize) {
-    // Hashing
-    let threads: Vec<usize> = (0..MAX_THREADS).collect();
+pub fn init_mine(data: &str, target: &str, difficulty: usize, num_threads: usize) {
+    // Hashing 
+    //let threads: Vec<usize> = (0..MAX_THREADS).collect();
+    let threads: Vec<usize> = (0..num_threads).collect();
     let found = Arc::new(AtomicBool::new(false));
     threads.into_par_iter().for_each(|thread| {
         let found = Arc::clone(&found);
-        match mine(data.as_bytes(), &target, difficulty, thread, &found) {
+        match mine(data.as_bytes(), &target, difficulty, num_threads, thread, &found) {
             Ok((hash, nonce)) => {
                 if !found.load(Ordering::Relaxed) {
                     alert(&format!("Hash: {:?}, Nonce: {:?}", hash, nonce));
@@ -32,7 +33,10 @@ pub fn init_mine(data: &str, target: &str, difficulty: usize) {
     });
 }
 
-fn mine(data: &[u8], target: &str, difficulty: usize, start: usize, found: &Arc<AtomicBool>) -> Result<(String, usize), Box<dyn std::error::Error>> {
+fn mine(data: &[u8], target: &str, difficulty: usize, 
+    num_threads: usize, start: usize, found: &Arc<AtomicBool>) 
+    -> Result<(String, usize), Box<dyn std::error::Error>> 
+{
     let mut hash_base = Sha256::new();
     hash_base.update(data);
     let mut hash = hash_base.clone().finalize();
@@ -46,7 +50,7 @@ fn mine(data: &[u8], target: &str, difficulty: usize, start: usize, found: &Arc<
     && !found.load(Ordering::Relaxed)
     {
         let mut hasher = hash_base.clone();
-        nonce += MAX_THREADS;
+        nonce += num_threads;
         hasher.update(nonce.to_string());
         hash = hasher.finalize();
     }
