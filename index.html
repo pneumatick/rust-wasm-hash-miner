@@ -24,26 +24,59 @@
     </div>
 
     <script type="module">
-      import init, { init_mine } from "./pkg/wasm_miner.js";
+        import init, { init_mine } from "./pkg/wasm_miner.js";
 
-      /* Function Definitions */
+        /* Function Definitions */
 
-      function insert_row(data, target, difficulty, hash, nonce) {
-        let table = document.getElementById("output_table");
+        function insert_row(data, target, difficulty, hash, nonce) {
+            let table = document.getElementById("output_table");
 
-        let row = table.insertRow(-1);
-        let data_cell = row.insertCell(0);
-        let target_cell = row.insertCell(1);
-        let difficulty_cell = row.insertCell(2);
-        let hash_cell = row.insertCell(3);
-        let nonce_cell = row.insertCell(4);
+            let row = table.insertRow(-1);
+            let data_cell = row.insertCell(0);
+            let target_cell = row.insertCell(1);
+            let difficulty_cell = row.insertCell(2);
+            let hash_cell = row.insertCell(3);
+            let nonce_cell = row.insertCell(4);
 
-        data_cell.innerHTML = data;
-        target_cell.innerHTML = target;
-        difficulty_cell.innerHTML = difficulty;
-        hash_cell.innerHTML = hash;
-        nonce_cell.innerHTML = nonce;
-      }
+            data_cell.innerHTML = data;
+            target_cell.innerHTML = target;
+            difficulty_cell.innerHTML = difficulty;
+            hash_cell.innerHTML = hash;
+            nonce_cell.innerHTML = nonce;
+        }
+
+        /* Create a JSON object from the table
+        Format:
+        {
+            "data": {
+                "target": {
+                    "difficulty": [hash, nonce]
+                }
+            }
+        }
+        */
+        function table_to_json() {
+            let table = document.getElementById("output_table");
+            let obj = {};
+
+            for (let i = 1; i < table.rows.length; i++) {
+                let row = table.rows[i];
+                let data = row.cells[0].innerHTML;
+                let target = row.cells[1].innerHTML;
+                let difficulty = row.cells[2].innerHTML;
+                let hash = row.cells[3].innerHTML;
+                let nonce = row.cells[4].innerHTML;
+
+                let rowData = {
+                target: {
+                    difficulty: [hash, nonce]
+                }
+                };
+                obj[data] = rowData;
+            }
+
+            return obj;
+        }
 
       /* Event listeners */
       document.getElementById("mine_button").addEventListener("click", () => {
@@ -62,6 +95,8 @@
             hash,
             nonce
         );
+       let json = table_to_json();
+       console.log(json);
       });
 
       /* Main Code */
