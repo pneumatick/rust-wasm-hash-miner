@@ -11,20 +11,156 @@
     <input type="number" id="difficulty" />
     <input type="number" id="num_threads" />
     <button id="mine_button">Mine</button>
+    <div id="output">
+        <button id="upload_button">Upload</button>
+        <button id="download_button">Download</button>
+        <table id="output_table">
+            <tr>
+                <th>Data</th>
+                <th>Target</th>
+                <th>Difficulty</th>
+                <th>Hash</th>
+                <th>Nonce</th>
+            </tr>
+        </table>
+    </div>
 
     <script type="module">
-      import init, { init_mine } from "./pkg/wasm_miner.js";
+        import init, { init_mine } from "./pkg/wasm_miner.js";
+
+        /* Function Definitions */
+
+        function insert_row(data, target, difficulty, hash, nonce) {
+            let table = document.getElementById("output_table");
+
+            let row = table.insertRow(-1);
+            let data_cell = row.insertCell(0);
+            let target_cell = row.insertCell(1);
+            let difficulty_cell = row.insertCell(2);
+            let hash_cell = row.insertCell(3);
+            let nonce_cell = row.insertCell(4);
+
+            data_cell.innerHTML = data;
+            target_cell.innerHTML = target;
+            difficulty_cell.innerHTML = difficulty;
+            hash_cell.innerHTML = hash;
+            nonce_cell.innerHTML = nonce;
+        }
+
+        /* Create a JSON object from the table
+        Format:
+        {
+            "data": {
+                "target": {
+                    "difficulty": [[hash, nonce], [hash, nonce], ...]
+                }
+            }
+        }
+        */
+        function table_to_json() {
+            let table = document.getElementById("output_table");
+            let obj = {};
+
+            for (let i = 1; i < table.rows.length; i++) {
+                let row = table.rows[i];
+                let data = row.cells[0].innerHTML;
+                let target = row.cells[1].innerHTML;
+                let difficulty = row.cells[2].innerHTML;
+                let hash = row.cells[3].innerHTML;
+                let nonce = row.cells[4].innerHTML;
+
+                if (obj[data]) {
+                    if (obj[data][target]) {
+                        if (obj[data][target][difficulty]) {
+                            obj[data][target][difficulty].push([hash, nonce]);
+                        }
+                        else {
+                            obj[data][target][difficulty] = [[hash, nonce]];
+                        }
+                    }
+                    else {
+                        obj[data][target] = {
+                            [difficulty]: [[hash, nonce]]
+                        };
+                    }
+                }
+                else {
+                    obj[data] = {
+                        [target]: {
+                            [difficulty]: [[hash, nonce]]
+                        }
+                    };
+                }
+            }
+
+            return obj;
+        }
+
+        function json_to_table(json) {
+            let table = document.getElementById("output_table");
+
+            for (let data in json) {
+                for (let target in json[data]) {
+                    for (let difficulty in json[data][target]) {
+                        for (let i = 0; i < json[data][target][difficulty].length; i++) {
+                            let hash = json[data][target][difficulty][i][0];
+                            let nonce = json[data][target][difficulty][i][1];
+                            insert_row(data, target, difficulty, hash, nonce);
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Event listeners */
+        document.getElementById("mine_button").addEventListener("click", () => {
+            let {hash, nonce} = init_mine(
+                document.getElementById("data_string").value,
+                document.getElementById("target_string").value,
+                parseInt(document.getElementById("difficulty").value),
+                parseInt(document.getElementById("num_threads").value)
+            );
+            
+            // Insert a new row into the hash table
+            insert_row(
+                document.getElementById("data_string").value,
+                document.getElementById("target_string").value,
+                document.getElementById("difficulty").value,
+                hash,
+                nonce
+            );
+        });
+
+        document.getElementById("upload_button").addEventListener("click", () => {
+            let input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = (e) => {
+                let file = e.target.files[0];
+                let reader = new FileReader();
+                reader.onload = (e) => {
+                    let json = JSON.parse(e.target.result);
+                    json_to_table(json);
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        document.getElementById("download_button").addEventListener("click", () => {
+            let json = table_to_json();
+            console.log(json);
+            let data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(json));
+            let file = new Blob([JSON.stringify(json)], {type: "application/json"});
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(file);
+            a.download = "hashes.json";
+            a.click();
+        });
+
+      /* Main Code */
 
       init();
-      document.getElementById("mine_button").addEventListener("click", () => {
-        let {hash, nonce} = init_mine(
-            document.getElementById("data_string").value,
-            document.getElementById("target_string").value,
-            parseInt(document.getElementById("difficulty").value),
-            parseInt(document.getElementById("num_threads").value)
-        );
-        console.log(`Hash: ${hash}, Nonce: ${nonce}`);
-      });
     </script>
   </body>
 </html>
