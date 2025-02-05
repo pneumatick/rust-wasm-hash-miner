@@ -28,8 +28,14 @@
     <script type="module">
         import init, { init_mine } from "./pkg/wasm_miner.js";
 
+        /* Global variables */
+
+        // JSON object to store the hashes and respective data
+        let hash_obj = {};
+
         /* Function Definitions */
 
+        // Insert a new row (hash, nonce, etc.) into the hash table
         function insert_row(data, target, difficulty, hash, nonce) {
             let table = document.getElementById("output_table");
 
@@ -50,52 +56,41 @@
         /* Create a JSON object from the table
         Format:
         {
-            "data": {
-                "target": {
-                    "difficulty": [[hash, nonce], [hash, nonce], ...]
+            data: {
+                target: {
+                    difficulty: [[hash, nonce], [hash, nonce], ...]
                 }
             }
         }
         */
-        function table_to_json() {
-            let table = document.getElementById("output_table");
-            let obj = {};
+        function hash_to_json(data, target, difficulty, hash, nonce) {
+            let obj = hash_obj;
 
-            for (let i = 1; i < table.rows.length; i++) {
-                let row = table.rows[i];
-                let data = row.cells[0].innerHTML;
-                let target = row.cells[1].innerHTML;
-                let difficulty = row.cells[2].innerHTML;
-                let hash = row.cells[3].innerHTML;
-                let nonce = row.cells[4].innerHTML;
-
-                if (obj[data]) {
-                    if (obj[data][target]) {
-                        if (obj[data][target][difficulty]) {
-                            obj[data][target][difficulty].push([hash, nonce]);
-                        }
-                        else {
-                            obj[data][target][difficulty] = [[hash, nonce]];
-                        }
+            if (obj[data]) {
+                if (obj[data][target]) {
+                    if (obj[data][target][difficulty]) {
+                        obj[data][target][difficulty].push([hash, nonce]);
                     }
                     else {
-                        obj[data][target] = {
-                            [difficulty]: [[hash, nonce]]
-                        };
+                        obj[data][target][difficulty] = [[hash, nonce]];
                     }
                 }
                 else {
-                    obj[data] = {
-                        [target]: {
-                            [difficulty]: [[hash, nonce]]
-                        }
+                    obj[data][target] = {
+                        [difficulty]: [[hash, nonce]]
                     };
                 }
             }
-
-            return obj;
+            else {
+                obj[data] = {
+                    [target]: {
+                        [difficulty]: [[hash, nonce]]
+                    }
+                };
+            }
         }
 
+        // Convert an object derived from a JSON file to a table
         function json_to_table(json) {
             let table = document.getElementById("output_table");
 
@@ -114,15 +109,39 @@
 
         /* Event listeners */
         document.getElementById("mine_button").addEventListener("click", () => {
+            // Get the previous nonce for this data, target, and difficulty
+            let table = document.getElementById("output_table");
+            let data = document.getElementById("data_string").value;
+            let target = document.getElementById("target_string").value;
+            let difficulty = document.getElementById("difficulty").value;
+            let start = 0;
+
+            // Get the last nonce for this data, target, and difficulty
+            if (hash_obj[data] && hash_obj[data][target] && hash_obj[data][target][difficulty]) {
+                let hash_arr = hash_obj[data][target][difficulty];
+                start = hash_arr[hash_arr.length - 1][1];
+            }
+
+            // Initiate mining
             let {hash, nonce} = init_mine(
                 document.getElementById("data_string").value,
                 document.getElementById("target_string").value,
                 parseInt(document.getElementById("difficulty").value),
-                parseInt(document.getElementById("num_threads").value)
+                parseInt(document.getElementById("num_threads").value),
+                start
             );
             
             // Insert a new row into the hash table
             insert_row(
+                document.getElementById("data_string").value,
+                document.getElementById("target_string").value,
+                document.getElementById("difficulty").value,
+                hash,
+                nonce
+            );
+
+            // Add the hash to the JSON object
+            hash_to_json(
                 document.getElementById("data_string").value,
                 document.getElementById("target_string").value,
                 document.getElementById("difficulty").value,
@@ -140,6 +159,7 @@
                 let reader = new FileReader();
                 reader.onload = (e) => {
                     let json = JSON.parse(e.target.result);
+                    hash_obj = json;
                     json_to_table(json);
                 };
                 reader.readAsText(file);
@@ -148,8 +168,7 @@
         });
 
         document.getElementById("download_button").addEventListener("click", () => {
-            let json = table_to_json();
-            console.log(json);
+            let json = hash_obj;
             let data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(json));
             let file = new Blob([JSON.stringify(json)], {type: "application/json"});
             let a = document.createElement("a");
@@ -158,9 +177,9 @@
             a.click();
         });
 
-      /* Main Code */
+        /* Main Code */
 
-      init();
+        init();
     </script>
   </body>
 </html>

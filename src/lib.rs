@@ -31,14 +31,14 @@ impl MineResult {
 
 // Initialize the mining process (JS-facing function)
 #[wasm_bindgen]
-pub fn init_mine(data: &str, target: &str, difficulty: usize, num_threads: usize) -> MineResult {
+pub fn init_mine(data: &str, target: &str, difficulty: usize, num_threads: usize, start: usize) -> MineResult {
     let threads: Vec<usize> = (0..num_threads).collect();
     let found = Arc::new(AtomicBool::new(false));
     
     // Parallelize the mining process
     let result = threads.into_par_iter().map(|thread| {
         let found = Arc::clone(&found);
-        match mine(data.as_bytes(), &target, difficulty, num_threads, thread, &found) {
+        match mine(data.as_bytes(), &target, difficulty, num_threads, thread + start, &found) {
             Ok((hash, nonce)) => {
                 if !found.load(Ordering::Relaxed) {
                     found.store(true, Ordering::Relaxed);
