@@ -12,6 +12,7 @@
     <input type="number" id="num_threads" />
     <button id="mine_button">Mine</button>
     <div id="output">
+        <button id="download_button">Download</button>
         <table id="output_table">
             <tr>
                 <th>Data</th>
@@ -50,7 +51,7 @@
         {
             "data": {
                 "target": {
-                    "difficulty": [hash, nonce]
+                    "difficulty": [[hash, nonce], [hash, nonce], ...]
                 }
             }
         }
@@ -67,37 +68,62 @@
                 let hash = row.cells[3].innerHTML;
                 let nonce = row.cells[4].innerHTML;
 
-                let rowData = {
-                target: {
-                    difficulty: [hash, nonce]
+                if (obj[data]) {
+                    if (obj[data][target]) {
+                        if (obj[data][target][difficulty]) {
+                            obj[data][target][difficulty].push([hash, nonce]);
+                        }
+                        else {
+                            obj[data][target][difficulty] = [[hash, nonce]];
+                        }
+                    }
+                    else {
+                        obj[data][target] = {
+                            [difficulty]: [[hash, nonce]]
+                        };
+                    }
                 }
-                };
-                obj[data] = rowData;
+                else {
+                    obj[data] = {
+                        [target]: {
+                            [difficulty]: [[hash, nonce]]
+                        }
+                    };
+                }
             }
 
             return obj;
         }
 
-      /* Event listeners */
-      document.getElementById("mine_button").addEventListener("click", () => {
-        let {hash, nonce} = init_mine(
-            document.getElementById("data_string").value,
-            document.getElementById("target_string").value,
-            parseInt(document.getElementById("difficulty").value),
-            parseInt(document.getElementById("num_threads").value)
-        );
-        
-        // Insert a new row into the hash table
-        insert_row(
-            document.getElementById("data_string").value,
-            document.getElementById("target_string").value,
-            document.getElementById("difficulty").value,
-            hash,
-            nonce
-        );
-       let json = table_to_json();
-       console.log(json);
-      });
+        /* Event listeners */
+        document.getElementById("mine_button").addEventListener("click", () => {
+            let {hash, nonce} = init_mine(
+                document.getElementById("data_string").value,
+                document.getElementById("target_string").value,
+                parseInt(document.getElementById("difficulty").value),
+                parseInt(document.getElementById("num_threads").value)
+            );
+            
+            // Insert a new row into the hash table
+            insert_row(
+                document.getElementById("data_string").value,
+                document.getElementById("target_string").value,
+                document.getElementById("difficulty").value,
+                hash,
+                nonce
+            );
+        });
+
+        document.getElementById("download_button").addEventListener("click", () => {
+            let json = table_to_json();
+            console.log(json);
+            let data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(json));
+            let file = new Blob([JSON.stringify(json)], {type: "application/json"});
+            let a = document.createElement("a");
+            a.href = URL.createObjectURL(file);
+            a.download = "hashes.json";
+            a.click();
+        });
 
       /* Main Code */
 
