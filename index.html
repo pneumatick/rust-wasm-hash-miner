@@ -12,6 +12,7 @@
     <input type="number" id="num_threads" />
     <button id="mine_button">Mine</button>
     <div id="output">
+        <button id="upload_button">Upload</button>
         <button id="download_button">Download</button>
         <table id="output_table">
             <tr>
@@ -95,6 +96,22 @@
             return obj;
         }
 
+        function json_to_table(json) {
+            let table = document.getElementById("output_table");
+
+            for (let data in json) {
+                for (let target in json[data]) {
+                    for (let difficulty in json[data][target]) {
+                        for (let i = 0; i < json[data][target][difficulty].length; i++) {
+                            let hash = json[data][target][difficulty][i][0];
+                            let nonce = json[data][target][difficulty][i][1];
+                            insert_row(data, target, difficulty, hash, nonce);
+                        }
+                    }
+                }
+            }
+        }
+
         /* Event listeners */
         document.getElementById("mine_button").addEventListener("click", () => {
             let {hash, nonce} = init_mine(
@@ -112,6 +129,22 @@
                 hash,
                 nonce
             );
+        });
+
+        document.getElementById("upload_button").addEventListener("click", () => {
+            let input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = (e) => {
+                let file = e.target.files[0];
+                let reader = new FileReader();
+                reader.onload = (e) => {
+                    let json = JSON.parse(e.target.result);
+                    json_to_table(json);
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         });
 
         document.getElementById("download_button").addEventListener("click", () => {
