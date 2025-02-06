@@ -11,20 +11,95 @@ interface MiningResult {
   target: string
   difficulty: number
   hash: string
-  nonce: string
+  nonce: number
 }
+
+interface HashStore {
+  [data: string]: {
+    [target: string]: {
+      [difficulty: number]: [string, number][]
+    }
+  }
+}
+
+let globalHashStore: HashStore = {};
 
 export default function WASMMiner() {
   const [results, setResults] = useState<MiningResult[]>([
     {
-      data: "Testing 21e8",
+      data: "Testing",
+      target: "21e8",
+      difficulty: 1,
+      hash: "21e80b25083d4be3e9d36ad202f9c586d5abbc26a36de1d5d945c23ae36b24b4",
+      nonce: 1109776,
+    },
+    {
+      data: "Hello, World!",
       target: "21e8",
       difficulty: 0,
-      hash: "21e80b25083d4be3e9d36ad202f9c586d5abbc26a36de1d5d945c23ae36b24b4",
-      nonce: "1109776",
-    },
-    // Add other initial results as needed
+      hash: "21e8c1b5b3f2c4b4c6f6b6b1b6b7b2b2b7b1b2b5b3b6",
+      nonce: 1109777,
+    }
   ])
+
+  const addNewResult = (data: string, target: string, difficulty: number, hash: string, nonce: number) => {
+    // Update UI results
+    setResults(prev => [...prev, { data, target, difficulty, hash, nonce }])
+    
+    // Update global hash store
+    if (!globalHashStore[data]) globalHashStore[data] = {};
+    if (!globalHashStore[data][target]) globalHashStore[data][target] = {};
+    if (!globalHashStore[data][target][difficulty]) globalHashStore[data][target][difficulty] = [];
+    
+    globalHashStore[data][target][difficulty].push([hash, nonce]);
+  }
+
+  const handleUpload = async (event : React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const text = await file.text()
+    const uploadedData = JSON.parse(text)
+
+    try {
+      Object.entries(uploadedData).forEach(([data, targets]: [string, any]) => {
+        Object.entries(targets).forEach(([target, difficulties]: [string, any]) => {
+          Object.entries(difficulties).forEach(([difficulty, hashes]: [string, any]) => {
+            hashes.forEach(([hash, nonce]: [string, number]) => {
+              addNewResult(data, target, parseInt(difficulty), hash, nonce);
+            })
+          })
+        })
+      })
+
+      globalHashStore = uploadedData;
+    }
+    catch (error) {
+      console.error('Error uploading file:', error);
+    }
+  }
+
+  const handleDownload = () => {
+    // Convert data to JSON string
+    const jsonString = JSON.stringify(globalHashStore, null, 2)
+    
+    // Create blob
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    
+    // Create download link
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'mining-results.json'
+    
+    // Trigger download
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -35,7 +110,7 @@ export default function WASMMiner() {
 
         <Input type="text" placeholder="Target" className="w-24" />
 
-        <Input type="number" value="0" className="w-24" />
+        <Input type="number" defaultValue="0" className="w-24" />
 
         <Select defaultValue="1">
           <SelectTrigger className="w-24">
@@ -49,8 +124,15 @@ export default function WASMMiner() {
           </SelectContent>
         </Select>
 
-        <Button variant="outline">Upload</Button>
-        <Button variant="outline">Download</Button>
+        <input 
+          type="file" 
+          accept=".json"
+          onChange={handleUpload} 
+          style={{ display: 'none' }}
+          id="fileInput"
+        />
+        <Button variant="outline" onClick={() => document.getElementById('fileInput')?.click()}>Upload</Button>
+        <Button variant="outline" onClick={handleDownload}>Download</Button>
         <Button>Mine</Button>
       </div>
 
