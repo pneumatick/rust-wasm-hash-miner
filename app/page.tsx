@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+import init, { init_mine } from "../pkg/wasm_miner.js"; // Remeber to fix the path after testing
+
 interface MiningResult {
   data: string
   target: string
@@ -25,22 +27,35 @@ interface HashStore {
 let globalHashStore: HashStore = {};
 
 export default function WASMMiner() {
-  const [results, setResults] = useState<MiningResult[]>([
-    {
-      data: "Testing",
-      target: "21e8",
-      difficulty: 1,
-      hash: "21e80b25083d4be3e9d36ad202f9c586d5abbc26a36de1d5d945c23ae36b24b4",
-      nonce: 1109776,
-    },
-    {
-      data: "Hello, World!",
-      target: "21e8",
-      difficulty: 0,
-      hash: "21e8c1b5b3f2c4b4c6f6b6b1b6b7b2b2b7b1b2b5b3b6",
-      nonce: 1109777,
+  // Field data
+  const [data, setData] = useState("");
+  const [target, setTarget] = useState("");
+  const [difficulty, setDifficulty] = useState(0);
+  const [threads, setThreads] = useState(1);
+
+  // Mining results
+  const [results, setResults] = useState<MiningResult[]>([])
+
+  const mine = async (data: string, target: string, difficulty: number, threads: number) => {
+    // Initialize WASM module
+    await init();
+
+    // Get the last nonce for this data, target, and difficulty
+    const lastNonce = globalHashStore[data]?.[target]?.[difficulty]?.slice(-1)?.[0][1];
+
+    // Mine hash
+    const result = init_mine(data, target, difficulty, threads, lastNonce);
+    addNewResult(data, target, difficulty, result.hash, result.nonce);
+  }
+
+  const handleMine = async () => {
+    if (!data || !target) {
+      alert("Please provide data and target");
+      return
     }
-  ])
+    console.log('Mining:', data, target, difficulty, threads);
+    await mine(data, target, difficulty, threads);
+  }
 
   const addNewResult = (data: string, target: string, difficulty: number, hash: string, nonce: number) => {
     // Update UI results
@@ -72,7 +87,7 @@ export default function WASMMiner() {
         })
       })
 
-      globalHashStore = uploadedData;
+      //globalHashStore = uploadedData;
     }
     catch (error) {
       console.error('Error uploading file:', error);
@@ -106,13 +121,28 @@ export default function WASMMiner() {
       <h1 className="text-2xl font-bold tracking-tight">Multithreaded WASM Hash Miner</h1>
 
       <div className="flex flex-wrap gap-4 items-center">
-        <Input type="text" placeholder="Input data" className="w-48" />
+        <Input 
+          type="text" 
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+          className="w-48" 
+        />
 
-        <Input type="text" placeholder="Target" className="w-24" />
+        <Input 
+          type="text" 
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="w-24" 
+        />
 
-        <Input type="number" defaultValue="0" className="w-24" />
+        <Input 
+          type="number" 
+          value={difficulty}
+          onChange={(e) => setDifficulty(parseInt(e.target.value) || 0)}
+          className="w-24" 
+        />
 
-        <Select defaultValue="1">
+        <Select value={threads.toString()} onValueChange={(val) => setThreads(parseInt(val))}>
           <SelectTrigger className="w-24">
             <SelectValue placeholder="Threads" />
           </SelectTrigger>
@@ -133,7 +163,7 @@ export default function WASMMiner() {
         />
         <Button variant="outline" onClick={() => document.getElementById('fileInput')?.click()}>Upload</Button>
         <Button variant="outline" onClick={handleDownload}>Download</Button>
-        <Button>Mine</Button>
+        <Button onClick={handleMine}>Mine</Button>
       </div>
 
       <div className="border rounded-lg">
